@@ -19,10 +19,10 @@ Sequenced by dependency, not by section number. Each phase should be genuinely w
 - [x] Validate adapter output against the Pydantic raw schemas (not just "runs without error" — actually confirm every field lands correctly) — every row instantiated against its Pydantic model; hand-verified `credit_utilization` and `bureau_thin_file_flag` trace correctly from raw inputs
 - [x] Run `FeatureEngine.compute_batch()` against real adapted data (not hand-built smoke-test dicts); hand-check derived features for a sample of applicants across all types and thin-file/complete-file cases — 8,000 vectors computed cleanly, NTC/thin-file and complete-file cases hand-checked
 
-## Phase 2 — Cross-source derived features
+## Phase 2 — Cross-source derived features (done)
 
-- [ ] Build `src/features/cross_source.py`: `obligation_discrepancy`, `income_discrepancy`, `asset_coverage_ratio`, and the other cross-source features documented but not yet implemented (requires the normalized profile from Phase 1)
-- [ ] Extend `EngineeredApplicantFeatureVector` with these fields, same null-vs-zero discipline as existing fields
+- [x] Build `src/features/cross_source.py`: `obligation_discrepancy`, `income_discrepancy`, `asset_coverage_ratio`, and the other cross-source features documented but not yet implemented (requires the normalized profile from Phase 1) — `compute_cross_source_features()` per-applicant, `compute_batch_cross_source()` + `merge_into_vectors()` for batch merge into engine.py's vectors
+- [x] Extend `EngineeredApplicantFeatureVector` with these fields, same null-vs-zero discipline as existing fields — added `obligation_discrepancy`, `income_discrepancy`, `asset_coverage_ratio` (all `Optional[float] = None`) plus `cross_source_data_completeness` (`float = 0.0`, matching the `*_data_completeness` exception pattern)
 
 ## Phase 3 — Database schema (Postgres)
 

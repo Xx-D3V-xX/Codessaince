@@ -154,6 +154,29 @@ class ITRRecord(BaseModel):
     tax_paid: Optional[float] = None
 
 
+class AssetsRecord(BaseModel):
+    """
+    raw assets / CAS-style investment data. one row per applicant.
+    optional per the applicability matrix (CLAUDE.md §4.1 item 5) — a
+    meaningful fraction of applicants genuinely have no declared assets,
+    which is recorded as has_declared_assets=False with the value fields
+    None (a known "zero assets" fact, not an absent-source fact). mirrors
+    the generator's own note that no formal schema existed for this source
+    until now (src/ingestion/secondary.py's build_asset_rows).
+    """
+
+    applicant_id: str
+    has_declared_assets: Optional[bool] = None
+    mutual_fund_value: Optional[float] = None
+    equity_value: Optional[float] = None
+    other_securities_value: Optional[float] = None
+    liquid_asset_value: Optional[float] = None
+    total_portfolio_value: Optional[float] = None
+    recent_redemption_value: Optional[float] = None
+    recent_purchase_value: Optional[float] = None
+    as_of_date: Optional[date] = None
+
+
 class EngineeredApplicantFeatureVector(BaseModel):
     applicant_id: str
     computed_at: datetime
@@ -235,6 +258,15 @@ class EngineeredApplicantFeatureVector(BaseModel):
     deduction_ratio_yr2: Optional[float] = None
     gross_to_taxable_gap_yr2: Optional[float] = None
     itr_data_completeness_yr2: float = 0.0
+
+    # --- cross-source (Phase 2, src/features/cross_source.py) ---
+    # requires the normalized profile assembled across every source at once,
+    # so these stay None until cross_source.py's merge_into_vectors() runs —
+    # same null-vs-zero discipline as every other field above (CLAUDE.md §4.4).
+    obligation_discrepancy: Optional[float] = None
+    income_discrepancy: Optional[float] = None
+    asset_coverage_ratio: Optional[float] = None
+    cross_source_data_completeness: float = 0.0
 
 
 class FeatureBatch(BaseModel):

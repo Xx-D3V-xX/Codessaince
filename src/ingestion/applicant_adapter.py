@@ -23,7 +23,7 @@ from pathlib import Path
 import polars as pl
 from pydantic import BaseModel, ValidationError
 
-from src.features.schemas import BankStatementRecord, BureauRecord, ITRRecord
+from src.features.schemas import AssetsRecord, BankStatementRecord, BureauRecord, ITRRecord
 
 RAW_DATA_PATH = Path("data/raw")
 
@@ -60,6 +60,7 @@ class AdapterResult(BaseModel):
     bureau: list[BureauRecord]
     bank: list[BankStatementRecord]
     itr: list[ITRRecord]
+    assets: list[AssetsRecord]
     errors: dict[str, list[str]] = {}
 
     model_config = {"arbitrary_types_allowed": True}
@@ -116,13 +117,15 @@ def load_and_adapt() -> AdapterResult:
     bureau_df = _load_chunks("bureau")
     bank_df = _load_chunks("bank_statement")
     itr_df = _load_chunks("itr")
+    assets_df = _load_chunks("assets")
 
     master = _rows_to_models(master_df, NormalizedApplicantProfile, "master_data", errors)
     bureau = _rows_to_models(bureau_df, BureauRecord, "bureau", errors)
     bank = _rows_to_models(bank_df, BankStatementRecord, "bank_statement", errors)
     itr = _rows_to_models(itr_df, ITRRecord, "itr", errors)
+    assets = _rows_to_models(assets_df, AssetsRecord, "assets", errors)
 
-    return AdapterResult(master=master, bureau=bureau, bank=bank, itr=itr, errors=errors)
+    return AdapterResult(master=master, bureau=bureau, bank=bank, itr=itr, assets=assets, errors=errors)
 
 
 def to_engine_frames(result: AdapterResult) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
@@ -141,7 +144,10 @@ def to_engine_frames(result: AdapterResult) -> tuple[pl.DataFrame, pl.DataFrame,
 
 if __name__ == "__main__":
     result = load_and_adapt()
-    print(f"master: {len(result.master)} bureau: {len(result.bureau)} bank: {len(result.bank)} itr: {len(result.itr)}")
+    print(
+        f"master: {len(result.master)} bureau: {len(result.bureau)} bank: {len(result.bank)} "
+        f"itr: {len(result.itr)} assets: {len(result.assets)}"
+    )
     if result.errors:
         for source, msgs in result.errors.items():
             print(f"{source}: {len(msgs)} validation failures (first: {msgs[0]})")
