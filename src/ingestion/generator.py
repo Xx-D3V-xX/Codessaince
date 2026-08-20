@@ -62,7 +62,7 @@ logger = logging.getLogger("nbfc.profile_generator")
 # ── global constants ───────────────────────────────────────────────────────────
 
 N_SEED_ROWS: int = 900         # Faker-driven seed rows the synthesizer is fit on
-N_PROFILES: int = 1000         # final synthetic applicant profiles to sample
+N_PROFILES: int = 100_000         # final synthetic applicant profiles to sample
 CHUNK_SIZE: int = 10_000
 RAW_DATA_PATH: Path = Path("data/raw")
 REFERENCE_DATE: datetime = datetime(2026, 4, 11)
