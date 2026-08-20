@@ -1,7 +1,12 @@
 // Phase 9 — basic test console, vanilla JS, no build step, no framework.
 // Talks to this same server's API (same origin, so no CORS setup needed).
 
-const API = ""; // same origin
+// backend runs as its own separate process/origin now (see main.py's module
+// docstring for why -- uvicorn --reload watching this directory too was
+// causing every frontend edit to restart the backend and recompute its
+// whole dataset). Override with ?api=http://host:port in the URL if the
+// backend isn't on localhost:8000.
+const API = new URLSearchParams(window.location.search).get("api") || "http://localhost:8000";
 
 // ---------------------------------------------------------------------------
 // tabs

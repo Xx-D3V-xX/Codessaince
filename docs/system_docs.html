@@ -86,11 +86,17 @@ footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 2r
 <h2>Running it locally</h2>
 
 <h3>Every time you want to start it up</h3>
+<p>Backend and frontend are <strong>two fully independent processes</strong> — see the warning box below for why. Start the backend:</p>
 <pre><code>docker compose up -d
 python -m alembic upgrade head
 uvicorn src.api.main:app --reload
 </code></pre>
-<p>That's it — <code>alembic upgrade head</code> is a no-op if migrations are already applied, and <strong>the API loads the already-trained models from disk at startup, it never retrains them.</strong> Then open <a href="/app/">/app/</a> for the test console, <a href="/api-reference">/api-reference</a> for interactive Swagger docs, or stay here at <a href="/docs">/docs</a>.</p>
+<p>That's it for the backend — <code>alembic upgrade head</code> is a no-op if migrations are already applied, and <strong>the API loads the already-trained models from disk at startup, it never retrains them.</strong> Then, separately, start the frontend (see <code>frontend/README.md</code>):</p>
+<pre><code>python -m http.server 5500 --directory frontend</code></pre>
+<p>Open <a href="http://localhost:5500">http://localhost:5500</a> for the test console, <a href="/api-reference">/api-reference</a> for interactive Swagger docs, or stay here at <a href="/docs">/docs</a>.</p>
+<div class="warn-box">
+  <strong>Why two processes, not one.</strong> This backend used to also serve the frontend directly (mounted under <code>/app</code>). <code>uvicorn --reload</code> watches the <em>entire</em> working directory by default, so any frontend-only edit — a <code>.js</code>/<code>.html</code>/<code>.css</code> change with nothing to do with the API — was restarting the whole backend process, which re-runs the ~1-minute, 8,000-applicant dataset build on every save. Splitting them into two processes (with CORS enabled on the backend) fixes that structurally: editing the frontend can never again restart the backend.
+</div>
 
 <h3>One-time setup (or whenever you deliberately want to reseed config / retrain)</h3>
 <p>Run this once after a fresh <code>git clone</code>, or any time you've wiped the <code>data/</code> directory (it's gitignored — trained models and generated data don't travel with the repo) or want to intentionally regenerate the models:</p>
@@ -114,7 +120,8 @@ python -m src.scoring.trainer
 <table>
 <thead><tr><th>Service</th><th>Port</th><th>How it's started</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>FastAPI (API + frontend + this page)</td><td class="mono">8000</td><td><span class="mono">uvicorn src.api.main:app</span></td><td>Default uvicorn port; change with <span class="mono">--port</span></td></tr>
+<tr><td>FastAPI (API + this page, /docs)</td><td class="mono">8000</td><td><span class="mono">uvicorn src.api.main:app</span></td><td>Default uvicorn port; change with <span class="mono">--port</span></td></tr>
+<tr><td>Frontend (static test console)</td><td class="mono">5500</td><td><span class="mono">python -m http.server 5500 --directory frontend</span></td><td>Fully separate process/origin from the API — see "Why two processes" above</td></tr>
 <tr><td>Postgres (creditgate-postgres)</td><td class="mono">5434 → 5432</td><td><span class="mono">docker compose up -d</span></td><td>Host port 5434 deliberately, not 5432/5433 — kept isolated from any other local Postgres stack</td></tr>
 </tbody>
 </table>
@@ -133,7 +140,7 @@ python -m src.scoring.trainer
 <tr><td>Healthcheck</td><td class="mono">pg_isready -U creditgate -d creditgate</td>, every 5s</tr>
 </tbody>
 </table>
-<p class="muted">No other containers are part of this project. The API and frontend run as a plain local process (uvicorn), not containerized, for this MVP.</p>
+<p class="muted">No other containers are part of this project. The API and the frontend each run as a plain local process (uvicorn and a static file server, respectively) — not containerized, for this MVP.</p>
 </section>
 
 <section id="credentials">
@@ -214,7 +221,7 @@ python -m src.scoring.trainer
 
 <section id="frontend">
 <h2>Frontend</h2>
-<p>A basic internal test console at <a href="/app/">/app/</a> — plain HTML/CSS/vanilla JS, no framework, no build step, served same-origin (no CORS needed). Explicitly scoped as basic/testing-only; a design pass is expected later. Five tabs: Submit, Decision, Rules Admin, Exception Queue, Audit — each a thin UI over the API above.</p>
+<p>A basic internal test console at <a href="http://localhost:5500">http://localhost:5500</a> (its own separate process — see <code>frontend/README.md</code>) — plain HTML/CSS/vanilla JS, no framework, no build step, talking to the API cross-origin via CORS. Explicitly scoped as basic/testing-only; a design pass is expected later. Five tabs: Submit, Decision, Rules Admin, Exception Queue, Audit — each a thin UI over the API above.</p>
 </section>
 
 <section id="testing">
