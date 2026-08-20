@@ -44,13 +44,13 @@ Sequenced by dependency, not by section number. Each phase should be genuinely w
 - [x] **Explicit test**: change one rule's threshold, re-run a stored application, confirm the decision changes and both decision versions are queryable — this is the PS-1 demo scenario 5 requirement, test it now, not the night before judging — `test_rules_engine.py`, run against real generated applicant data and a live Postgres instance, all assertions pass
 - [x] (not on the original checklist, added as a prerequisite) a sensible synthetic default policy — `src/rules/seed_rules.py`, 17 rules across both pipelines, idempotent
 
-## Phase 5 — Weighted-scoring layer + ML integration
+## Phase 5 — Weighted-scoring layer + ML integration (done)
 
-- [ ] Weighted-deviation formula implementation per CLAUDE.md §3.6 (normalize before weighting, not after)
-- [ ] Two XGBoost models (individual, MSME), each consuming `EngineeredApplicantFeatureVector` + cross-source features + raw passthrough fields per the confirmed training-architecture decision
-- [ ] Rebuild `trainer.py` from scratch to consume the new feature pipeline instead of its own hand-rolled one; replace hardcoded proxy-label rules with something that doesn't reproduce the CreditIQ anti-pattern
-- [ ] SHAP explainability wired to both models
-- [ ] Recalibration offset applied at the probability-to-score mapping stage (§3.7), separately logged from rules-layer weight changes
+- [x] Weighted-deviation formula implementation per CLAUDE.md §3.6 (normalize before weighting, not after) — `src/scoring/weighted_deviation.py`, new `weighted_scoring_config` DB table (Alembic migration `9b6a5cb597ee`, added since Phase 3 predated this layer), CRUD following the same insert-new-version pattern as `rules`
+- [x] Two XGBoost models (individual, MSME), each consuming `EngineeredApplicantFeatureVector` + cross-source features + raw passthrough fields per the confirmed training-architecture decision — `src/scoring/trainer.py` + `src/scoring/feature_matrix.py`
+- [x] Rebuild `trainer.py` from scratch to consume the new feature pipeline instead of its own hand-rolled one; replace hardcoded proxy-label rules with something that doesn't reproduce the CreditIQ anti-pattern — consumes the real adapter/engine/cross_source pipeline; `src/scoring/proxy_labels.py` is a disclosed, centralized, continuous+probabilistic proxy label (not a duplicated deterministic threshold formula)
+- [x] SHAP explainability wired to both models — `src/scoring/explain.py`, verified to reconstruct the model's real `predict_proba()` output exactly (within float tolerance) for real applicants in both pipelines
+- [x] Recalibration offset applied at the probability-to-score mapping stage (§3.7), separately logged from rules-layer weight changes — `src/scoring/recalibration.py::apply_recalibration()`, own `recalibration_offset` audit_log entity_type
 
 ## Phase 6 — Decision hierarchy & exception workflow
 

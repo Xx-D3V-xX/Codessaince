@@ -137,6 +137,12 @@ class ExceptionStatus(str, enum.Enum):
     REJECTED = "REJECTED"
 
 
+class RiskDirection(str, enum.Enum):
+    """which side of a WeightedScoringConfig row's base_limit reads as risk — see that class's docstring."""
+    HIGHER_IS_RISK = "HIGHER_IS_RISK"
+    LOWER_IS_RISK = "LOWER_IS_RISK"
+
+
 class DecisionOutcome(str, enum.Enum):
     """mirrors Phase 6's decision state machine exactly — see TODO.md Phase 6."""
     STP_APPROVED = "STP_APPROVED"
@@ -394,6 +400,52 @@ class RecalibrationOffset(Base):
 
     offset_value: Mapped[float] = mapped_column(Numeric(9, 6), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    effective_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# weighted_scoring_config — Phase 5's admin-configurable field-importance
+# weights, per CLAUDE.md §3.6. Not part of Phase 3's original seven tables
+# (that phase predates the weighted-scoring layer being built); added here
+# rather than overloading `rules` because a weight isn't a trigger condition
+# — it never fires a HARD_REJECT/EXCEPTION outcome on its own, it only scales
+# one field's contribution to a single composite ML input feature. Same
+# versioning pattern as rules/eligibility_multipliers/pricing_bands regardless.
+# ---------------------------------------------------------------------------
+
+class WeightedScoringConfig(Base):
+    """
+    one field's contribution to the admin-weighted composite risk signal
+    (CLAUDE.md §3.6): normalized_deviation = clip((actual_value - base_limit)
+    / reference_range, -1, 1), sign-flipped first when direction is
+    LOWER_IS_RISK so "deviation" always means "deviation toward risk"
+    regardless of whether high or low values are dangerous for this
+    particular field (see src/scoring/weighted_deviation.py). weighted_signal
+    = normalized_deviation * weight; every active row's weighted_signal for
+    a pipeline sums into ONE new engineered feature fed to that pipeline's
+    XGBoost model — the model's input schema never gains or loses a slot
+    when an admin changes a weight, only the value flowing into that one
+    slot changes (§3.6's explicit design point).
+    """
+
+    __tablename__ = "weighted_scoring_config"
+    __table_args__ = (UniqueConstraint("field_code", "version", name="uq_weighted_scoring_field_version"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    field_code: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    version: Mapped[int] = mapped_column(nullable=False, default=1)
+    pipeline: Mapped[ApplicantPipeline] = mapped_column(Enum(ApplicantPipeline, name="applicant_pipeline"), nullable=False)
+
+    source_field: Mapped[str] = mapped_column(String(128), nullable=False)  # the rule-context field name to read
+    direction: Mapped[RiskDirection] = mapped_column(Enum(RiskDirection, name="risk_direction"), nullable=False)
+    base_limit: Mapped[float] = mapped_column(Numeric(14, 6), nullable=False)
+    reference_range: Mapped[float] = mapped_column(Numeric(14, 6), nullable=False)  # must be > 0
+    weight: Mapped[float] = mapped_column(Numeric(9, 6), nullable=False)
 
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     effective_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
