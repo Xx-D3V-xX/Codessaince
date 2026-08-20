@@ -64,14 +64,14 @@ Sequenced by dependency, not by section number. Each phase should be genuinely w
 - [x] Pricing band lookup (configurable, not hardcoded) — `compute_pricing()`, same CRUD pattern against `pricing_bands`
 - [x] Risk grade computation, separate from approve/reject outcome — `compute_risk_grade()`: model P(default) → Phase 5's recalibration offset → risk grade, computed for STP_APPROVED **and** EXCEPTION_REQUIRED decisions alike (never gated on the BRE's own verdict), so a pending exception's reviewer has a grade to work from
 
-## Phase 8 — API layer
+## Phase 8 — API layer (done)
 
-- [ ] `POST /applications` → normalize, validate, return 202 + application_id (async saga pattern)
-- [ ] `GET /applications/{id}/decision` → poll for result
-- [ ] `PATCH /rules/{id}` → live threshold edit
-- [ ] `POST /applications/{id}/rerun` → re-evaluate stored profile against current rules
-- [ ] `GET /applications/{id}/audit` → full audit trail
-- [ ] Exception approval endpoints, role-gated
+- [x] `POST /applications` → normalize, validate, return 202 + application_id (async saga pattern) — `src/api/routers/applications.py`, `FastAPI BackgroundTasks` runs `evaluate_route_and_price()` after the response is sent
+- [x] `GET /applications/{id}/decision` → poll for result — returns current `application_status` + full decision/pricing/exception detail once `DECISIONED`
+- [x] `PATCH /rules/{id}` → live threshold edit — keyed by `rule_code` (the stable identity), not the surrogate `id`, which changes on every edit — see router docstring for why
+- [x] `POST /applications/{id}/rerun` → re-evaluate stored profile against current rules — re-fires from `Application.rule_context_snapshot` (Phase 6), also async/202
+- [x] `GET /applications/{id}/audit` → full audit trail — aggregates `audit_log` across the application/decision/exception entity_types a single application's history spans
+- [x] Exception approval endpoints, role-gated — `POST /exceptions/{id}/approve|reject`, real authorization logic keyed off `X-User-Role` (see `src/api/deps.py` for the honest disclosure of what "role-gated" means without a real auth system)
 
 ## Phase 9 — Frontend
 
