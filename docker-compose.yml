@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: creditgate-postgres
+    environment:
+      POSTGRES_DB: creditgate
+      POSTGRES_USER: creditgate
+      POSTGRES_PASSWORD: creditgate
+    ports:
+      - "5434:5432"
+    volumes:
+      - creditgate_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U creditgate -d creditgate"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  creditgate_pgdata:

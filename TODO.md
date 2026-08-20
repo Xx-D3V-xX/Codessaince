@@ -24,15 +24,15 @@ Sequenced by dependency, not by section number. Each phase should be genuinely w
 - [x] Build `src/features/cross_source.py`: `obligation_discrepancy`, `income_discrepancy`, `asset_coverage_ratio`, and the other cross-source features documented but not yet implemented (requires the normalized profile from Phase 1) — `compute_cross_source_features()` per-applicant, `compute_batch_cross_source()` + `merge_into_vectors()` for batch merge into engine.py's vectors
 - [x] Extend `EngineeredApplicantFeatureVector` with these fields, same null-vs-zero discipline as existing fields — added `obligation_discrepancy`, `income_discrepancy`, `asset_coverage_ratio` (all `Optional[float] = None`) plus `cross_source_data_completeness` (`float = 0.0`, matching the `*_data_completeness` exception pattern)
 
-## Phase 3 — Database schema (Postgres)
+## Phase 3 — Database schema (Postgres) (done)
 
-- [ ] `applications` table
-- [ ] `rules` table (condition, threshold, outcome, severity, reason_code, priority, rule_group, active, version, effective_from) — versioned by insert-new-row-on-edit, not in-place mutation
-- [ ] `decisions` table (outcome, risk_grade, eligible_amount, interest_rate, rule_version_snapshot)
-- [ ] `exceptions` table (level, status, assigned_to, resolved_by, resolved_at, notes)
-- [ ] `audit_log` table (actor, action, entity_type, entity_id, before, after, timestamp) — one shared write path, not per-endpoint ad hoc writes
-- [ ] `eligibility_multipliers` / `pricing_bands` tables (admin-configurable, same versioning pattern as rules)
-- [ ] `recalibration_offsets` table (per risk-grade, admin-set, own audit trail — see CLAUDE.md §3.7)
+- [x] `applications` table — `src/db/models.py::Application`
+- [x] `rules` table (condition, threshold, outcome, severity, reason_code, priority, rule_group, active, version, effective_from) — versioned by insert-new-row-on-edit, not in-place mutation — `src/db/models.py::Rule`, `(rule_code, version)` unique
+- [x] `decisions` table (outcome, risk_grade, eligible_amount, interest_rate, rule_version_snapshot) — `src/db/models.py::Decision`, chains re-runs via `superseded_by_decision_id` rather than overwriting
+- [x] `exceptions` table (level, status, assigned_to, resolved_by, resolved_at, notes) — `src/db/models.py::Exception_`
+- [x] `audit_log` table (actor, action, entity_type, entity_id, before, after, timestamp) — one shared write path, not per-endpoint ad hoc writes — `src/db/models.py::AuditLog` + `src/db/audit.py::write_audit_log()`
+- [x] `eligibility_multipliers` / `pricing_bands` tables (admin-configurable, same versioning pattern as rules) — `src/db/models.py::EligibilityMultiplier`, `PricingBand`
+- [x] `recalibration_offsets` table (per risk-grade, admin-set, own audit trail — see CLAUDE.md §3.7) — `src/db/models.py::RecalibrationOffset`, `(pipeline, risk_grade, version)` unique
 
 ## Phase 4 — Rules engine (the graded centerpiece — build and test this before UI polish)
 
