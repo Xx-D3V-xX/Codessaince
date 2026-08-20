@@ -45,7 +45,7 @@ _MEMBERSHIP_OPS = {RuleOperator.IN, RuleOperator.NOT_IN}
 _NULL_CHECK_OPS = {RuleOperator.IS_NULL, RuleOperator.IS_NOT_NULL}
 
 
-def _jsonable(value: Any) -> Any:
+def to_jsonable(value: Any) -> Any:
     """context values may carry datetime/date/Decimal (from model_dump()'d Pydantic sources) — JSONB needs plain types."""
     if isinstance(value, (datetime, date)):
         return value.isoformat()
@@ -77,7 +77,7 @@ class RuleEvalResult:
             "pipeline": self.pipeline,
             "field": self.field_name,
             "operator": self.operator,
-            "actual_value": _jsonable(self.actual_value),
+            "actual_value": to_jsonable(self.actual_value),
             "threshold": self.threshold,
             "condition_met": self.condition_met,
             "outcome": self.outcome,

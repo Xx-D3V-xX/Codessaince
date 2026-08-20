@@ -52,11 +52,11 @@ Sequenced by dependency, not by section number. Each phase should be genuinely w
 - [x] SHAP explainability wired to both models — `src/scoring/explain.py`, verified to reconstruct the model's real `predict_proba()` output exactly (within float tolerance) for real applicants in both pipelines
 - [x] Recalibration offset applied at the probability-to-score mapping stage (§3.7), separately logged from rules-layer weight changes — `src/scoring/recalibration.py::apply_recalibration()`, own `recalibration_offset` audit_log entity_type
 
-## Phase 6 — Decision hierarchy & exception workflow
+## Phase 6 — Decision hierarchy & exception workflow (done)
 
-- [ ] Decision state machine: `STP_APPROVED | HARD_REJECT | EXCEPTION_REQUIRED | INSUFFICIENT_DATA`
-- [ ] Exception routing (L1/L2/Credit Head) including count-based escalation
-- [ ] Exception resolution endpoint (approve/reject by authorized role), re-fires decision, audit-logged
+- [x] Decision state machine: `STP_APPROVED | HARD_REJECT | EXCEPTION_REQUIRED | INSUFFICIENT_DATA` — the enum + `resolve_decision()` (Phase 4); Phase 6 adds `effective_outcome()` (`src/rules/exceptions.py`) composing it with an exception's resolution into one "cleared to proceed" answer, without retroactively relabeling the automated decision
+- [x] Exception routing (L1/L2/Credit Head) including count-based escalation — `src/rules/exceptions.py::route_exception()`, auto-creates an `Exception_` row at `resolve_decision()`'s already-computed (and possibly escalated) severity, assigned to a level-scoped queue
+- [x] Exception resolution endpoint (approve/reject by authorized role), re-fires decision, audit-logged — `src/rules/exceptions.py::resolve_application_exception()`; re-fire runs from `Application.rule_context_snapshot` alone (new column, added since Phase 3's two snapshot fields didn't include raw bureau/bank data rules also need)
 
 ## Phase 7 — Loan eligibility & pricing
 

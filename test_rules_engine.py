@@ -133,7 +133,7 @@ with get_session() as s:
     s.add(app)
     s.flush()
 
-    decision1 = evaluate_application(
+    decision1, _resolved1 = evaluate_application(
         s, app, candidate_master, vector_by_id[candidate_id],
         bureau_row=candidate_bureau, bank_row=bank_by_id.get(candidate_id), actor="test_rules_engine",
     )
@@ -157,7 +157,7 @@ with get_session() as s:
 print("\n=== re-running the SAME stored application against the new threshold ===")
 with get_session() as s:
     app = s.get(Application, app_id)
-    decision2 = evaluate_application(
+    decision2, _resolved2 = evaluate_application(
         s, app, candidate_master, vector_by_id[candidate_id],
         bureau_row=candidate_bureau, bank_row=bank_by_id.get(candidate_id), actor="test_rules_engine",
     )
@@ -177,12 +177,18 @@ with get_session() as s:
     print(f"decision2 (new): outcome={d2.outcome.value} is_current={d2.is_current}")
     print("assert: both decision versions independently queryable with correct chaining -- PASS\n")
 
-    both_versions = s.execute(select(Rule).where(Rule.rule_code == "IND_MIN_BUREAU_SCORE").order_by(Rule.version)).scalars().all()
-    assert len(both_versions) == 2
-    assert both_versions[0].active is False and both_versions[0].value == {"threshold": 600}
-    assert both_versions[1].active is True and both_versions[1].value == {"threshold": new_threshold}
-    print(f"rule v1: threshold={both_versions[0].value['threshold']} active={both_versions[0].active}")
-    print(f"rule v2: threshold={both_versions[1].value['threshold']} active={both_versions[1].active}")
+    # >= 2, not == 2: the DB accumulates real version history across every
+    # run of this test across every phase (that's the point of versioning
+    # by insert) -- what matters is the latest two versions specifically,
+    # not a total count that only held on a pristine, never-rerun DB.
+    all_versions = s.execute(select(Rule).where(Rule.rule_code == "IND_MIN_BUREAU_SCORE").order_by(Rule.version)).scalars().all()
+    assert len(all_versions) >= 2
+    previous_version, latest_version = all_versions[-2], all_versions[-1]
+    assert previous_version.active is False and previous_version.value == {"threshold": 600}
+    assert latest_version.active is True and latest_version.value == {"threshold": new_threshold}
+    print(f"rule v{previous_version.version}: threshold={previous_version.value['threshold']} active={previous_version.active}")
+    print(f"rule v{latest_version.version}: threshold={latest_version.value['threshold']} active={latest_version.active}")
+    print(f"({len(all_versions)} total versions on record — real accumulated history across every prior run)")
     print("assert: old rule version preserved untouched, new version active -- PASS")
 
 print("\nALL PHASE 4 DEMO-SCENARIO-5 ASSERTIONS PASSED")

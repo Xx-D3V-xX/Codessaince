@@ -176,9 +176,24 @@ class Application(Base):
     # point-in-time snapshots of the normalized profile / engineered feature
     # vector this application was evaluated against — reproducibility for
     # audit and for Phase 4's re-run flow, independent of Phases 0-2's own
-    # storage (which is not versioned per-application).
+    # storage (which is not versioned per-application). These two are for
+    # DISPLAY (Phase 9's "application summary and normalized profile" screen
+    # wants profile fields and computed metrics shown as two distinct
+    # things), not for re-evaluation — they exclude raw bureau/bank fields
+    # rules also reference (e.g. bureau_score; see src/rules/context.py's
+    # build_rule_context() docstring), so they're insufficient on their own
+    # to re-run the rules engine.
     normalized_profile_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     feature_vector_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # the FULL flat context (master + raw bureau + raw bank + engineered
+    # vector, i.e. exactly what build_rule_context() produced) actually
+    # used at evaluation time — added in Phase 6 so exception resolution's
+    # "re-fire" can re-run evaluate_application() from the stored
+    # application alone, with no dependency on Phases 0-2's mutable
+    # external storage still holding the same rows it held at first
+    # evaluation. Kept in sync by evaluate_application() on every run,
+    # fresh or re-fired (src/rules/engine.py).
+    rule_context_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
     decisions: Mapped[list["Decision"]] = relationship(back_populates="application")
