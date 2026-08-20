@@ -398,6 +398,19 @@ def build_profiles_copulagan(fake: Faker, n_profiles: int, n_seed_rows: int) -> 
             d["default_flag"] = False
             d["suit_filed_flag"] = False
 
+        # requested_loan_amount was sampled from its own applicant-type-keyed
+        # bucket table at seed time (personal-loan buckets top out at 20L,
+        # MSME buckets run up to 1Cr — see priors.py), but it's an independent
+        # numeric column to the GAN, so it can decorrelate from applicant_type
+        # after resampling (same class of bug as the DPD/hard-negative-flag
+        # decorrelation above) — e.g. a SALARIED row requesting a 53L,
+        # MSME-scale loan. Clip back to the personal-loan ceiling for non-
+        # business applicant types.
+        if applicant_type in ("SALARIED", "SELF_EMPLOYED"):
+            requested = d.get("requested_loan_amount")
+            if requested is not None:
+                d["requested_loan_amount"] = clip(float(requested), 10_000, 2_000_000)
+
         account_opening_date = REFERENCE_DATE - timedelta(
             days=int(d.get("account_opening_vintage_months") or 12) * 30
         )

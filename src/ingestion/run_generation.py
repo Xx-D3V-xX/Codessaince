@@ -61,6 +61,9 @@ _MASTER_EXCLUDE_FIELDS = {
     "total_income_yr2", "income_verification_ratio",
     # internal bookkeeping
     "is_business", "is_business_or_se",
+    # attached post-synthesis by _attach_dpd_history — belongs only in the
+    # bureau table, not master_data
+    "dpd_history",
 }
 
 _BUREAU_FIELDS = [

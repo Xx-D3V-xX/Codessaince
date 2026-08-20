@@ -13,11 +13,11 @@ Sequenced by dependency, not by section number. Each phase should be genuinely w
 - [x] Write verification/check script: schema coverage per source, internal integrity checks (income components sum to gross total, DPD history internally consistent, CAS asset components sum to portfolio total) — `src/ingestion/check_data.py`
 - [x] Run generation, inspect output by hand for at least a few applicants per type (salaried, self-employed, MSME, corporate, NTC/thin-file) before treating it as trustworthy — done; caught and fixed 2 real bugs (dpd_history label override, hard-negative flag/max_dpd decorrelation) plus an ITR income-component overshoot bug, all documented in PROGRESS.md
 
-## Phase 1 — Ingestion/adapter layer
+## Phase 1 — Ingestion/adapter layer (done)
 
-- [ ] Build `src/ingestion/applicant_adapter.py`: reads generator output, reshapes into exactly the three input shapes `engine.py` requires (`BureauRecord`, `BankStatementRecord`, `ITRRecord`×2 rows/applicant)
-- [ ] Validate adapter output against the Pydantic raw schemas (not just "runs without error" — actually confirm every field lands correctly)
-- [ ] Run `FeatureEngine.compute_batch()` against real adapted data (not hand-built smoke-test dicts); hand-check derived features for a sample of applicants across all types and thin-file/complete-file cases
+- [x] Build `src/ingestion/applicant_adapter.py`: reads generator output, reshapes into exactly the three input shapes `engine.py` requires (`BureauRecord`, `BankStatementRecord`, `ITRRecord`×2 rows/applicant) — also produces `NormalizedApplicantProfile` (master-data fields engine.py's raw schemas don't cover) for downstream BRE use
+- [x] Validate adapter output against the Pydantic raw schemas (not just "runs without error" — actually confirm every field lands correctly) — every row instantiated against its Pydantic model; hand-verified `credit_utilization` and `bureau_thin_file_flag` trace correctly from raw inputs
+- [x] Run `FeatureEngine.compute_batch()` against real adapted data (not hand-built smoke-test dicts); hand-check derived features for a sample of applicants across all types and thin-file/complete-file cases — 8,000 vectors computed cleanly, NTC/thin-file and complete-file cases hand-checked
 
 ## Phase 2 — Cross-source derived features
 
