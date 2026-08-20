@@ -16,8 +16,8 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.dataset import build_dataset
@@ -52,6 +52,18 @@ app.include_router(exceptions.router)
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    """the bare root has no content of its own — send a browser landing here to the test console."""
+    return RedirectResponse(url="/app")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    """no favicon asset -- return an empty 204 instead of letting every browser tab spam 404s in the server log."""
+    return Response(status_code=204)
 
 
 @app.get("/docs", response_class=HTMLResponse, include_in_schema=False)
