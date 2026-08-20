@@ -58,11 +58,11 @@ Sequenced by dependency, not by section number. Each phase should be genuinely w
 - [x] Exception routing (L1/L2/Credit Head) including count-based escalation — `src/rules/exceptions.py::route_exception()`, auto-creates an `Exception_` row at `resolve_decision()`'s already-computed (and possibly escalated) severity, assigned to a level-scoped queue
 - [x] Exception resolution endpoint (approve/reject by authorized role), re-fires decision, audit-logged — `src/rules/exceptions.py::resolve_application_exception()`; re-fire runs from `Application.rule_context_snapshot` alone (new column, added since Phase 3's two snapshot fields didn't include raw bureau/bank data rules also need)
 
-## Phase 7 — Loan eligibility & pricing
+## Phase 7 — Loan eligibility & pricing (done)
 
-- [ ] Eligibility calculation (multiplier/cap per risk grade, configurable, not hardcoded)
-- [ ] Pricing band lookup (configurable, not hardcoded)
-- [ ] Risk grade computation, separate from approve/reject outcome
+- [x] Eligibility calculation (multiplier/cap per risk grade, configurable, not hardcoded) — `src/pricing/eligibility.py::compute_eligibility()`, config via `src/pricing/config.py` (new CRUD for the `eligibility_multipliers` table, schema'd in Phase 3, unused until now)
+- [x] Pricing band lookup (configurable, not hardcoded) — `compute_pricing()`, same CRUD pattern against `pricing_bands`
+- [x] Risk grade computation, separate from approve/reject outcome — `compute_risk_grade()`: model P(default) → Phase 5's recalibration offset → risk grade, computed for STP_APPROVED **and** EXCEPTION_REQUIRED decisions alike (never gated on the BRE's own verdict), so a pending exception's reviewer has a grade to work from
 
 ## Phase 8 — API layer
 

@@ -31,6 +31,9 @@ from src.features.engine import (
     INCOME_TREND_BANDS,
     MAX_DPD_BANDS,
 )
+from src.features.schemas import EngineeredApplicantFeatureVector
+
+_ENGINEERED_VECTOR_FIELD_NAMES = set(EngineeredApplicantFeatureVector.model_fields)
 
 RAW_PASSTHROUGH_FIELDS = ["age", "declared_income_monthly", "requested_loan_amount"]
 
@@ -93,3 +96,19 @@ def get_feature_columns(sample_feature_vector_row: dict) -> list[str]:
     """the exact, stable column order build_feature_row() produces for vectors shaped like the sample given."""
     numeric_fields = _numeric_field_names(sample_feature_vector_row)
     return [*RAW_PASSTHROUGH_FIELDS, *numeric_fields, *_BAND_ORDER.keys(), *_BOOL_FIELDS, "admin_weighted_risk_signal"]
+
+
+def extract_feature_vector_fields(context: dict) -> dict:
+    """
+    reconstructs the pure EngineeredApplicantFeatureVector-shaped dict out of
+    a flat rule-evaluation context (src/rules/context.py's build_rule_context()
+    output — master fields + raw bureau/bank fields + the engineered vector,
+    all merged). Used by src/pricing/eligibility.py's inference path, which
+    only has the merged context (from Application.rule_context_snapshot) on
+    hand, not the original separate model_dump() dict trainer.py built the
+    feature matrix from. Filtering by field NAME (not by re-deriving values)
+    is exact and driftless: engineered field names never collide with raw
+    bureau/bank/master field names (see build_rule_context()'s own docstring),
+    so this recovers exactly the same key set trainer.py trained against.
+    """
+    return {k: v for k, v in context.items() if k in _ENGINEERED_VECTOR_FIELD_NAMES}
