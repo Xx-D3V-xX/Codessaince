@@ -34,14 +34,15 @@ Sequenced by dependency, not by section number. Each phase should be genuinely w
 - [x] `eligibility_multipliers` / `pricing_bands` tables (admin-configurable, same versioning pattern as rules) — `src/db/models.py::EligibilityMultiplier`, `PricingBand`
 - [x] `recalibration_offsets` table (per risk-grade, admin-set, own audit trail — see CLAUDE.md §3.7) — `src/db/models.py::RecalibrationOffset`, `(pipeline, risk_grade, version)` unique
 
-## Phase 4 — Rules engine (the graded centerpiece — build and test this before UI polish)
+## Phase 4 — Rules engine (the graded centerpiece — build and test this before UI polish) (done)
 
-- [ ] Rule evaluation function: given a normalized profile + derived metrics, evaluate every active rule, return pass/fail + actual value + threshold per rule
-- [ ] `rule_group` AND-semantics implementation
-- [ ] Conflict resolution function (`resolve_decision()`) per CLAUDE.md §3.4 precedence order — one clearly named function, not scattered logic
-- [ ] Branch by applicant type (individual ruleset vs. MSME ruleset) per the confirmed two-pipeline decision
-- [ ] Rule CRUD (create/edit/deactivate), each edit creating a new version row
-- [ ] **Explicit test**: change one rule's threshold, re-run a stored application, confirm the decision changes and both decision versions are queryable — this is the PS-1 demo scenario 5 requirement, test it now, not the night before judging
+- [x] Rule evaluation function: given a normalized profile + derived metrics, evaluate every active rule, return pass/fail + actual value + threshold per rule — `src/rules/evaluator.py::evaluate_rule()`/`evaluate_rules()`, three-valued `condition_met` (True/False/None-for-missing-data)
+- [x] `rule_group` AND-semantics implementation — `src/rules/evaluator.py::evaluate_rule_groups()`
+- [x] Conflict resolution function (`resolve_decision()`) per CLAUDE.md §3.4 precedence order — one clearly named function, not scattered logic — `src/rules/resolver.py::resolve_decision()`, all 5 precedence steps including count-based escalation
+- [x] Branch by applicant type (individual ruleset vs. MSME ruleset) per the confirmed two-pipeline decision — `src/rules/context.py::pipeline_for()`
+- [x] Rule CRUD (create/edit/deactivate), each edit creating a new version row — `src/rules/crud.py`
+- [x] **Explicit test**: change one rule's threshold, re-run a stored application, confirm the decision changes and both decision versions are queryable — this is the PS-1 demo scenario 5 requirement, test it now, not the night before judging — `test_rules_engine.py`, run against real generated applicant data and a live Postgres instance, all assertions pass
+- [x] (not on the original checklist, added as a prerequisite) a sensible synthetic default policy — `src/rules/seed_rules.py`, 17 rules across both pipelines, idempotent
 
 ## Phase 5 — Weighted-scoring layer + ML integration
 
