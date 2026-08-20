@@ -34,7 +34,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dataset import build_dataset
-from src.api.routers import applications, exceptions, rules
+from src.api.routers import applicants, applications, exceptions, onboarding, rules
 
 DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
 
@@ -70,6 +70,8 @@ app.add_middleware(
 app.include_router(applications.router)
 app.include_router(rules.router)
 app.include_router(exceptions.router)
+app.include_router(onboarding.router)
+app.include_router(applicants.router)
 
 
 @app.get("/health")
