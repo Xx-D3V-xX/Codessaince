@@ -84,25 +84,29 @@ footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 2r
 
 <section id="running">
 <h2>Running it locally</h2>
-<pre><code># 1. start Postgres (docker-compose, isolated on port 5434)
-docker compose up -d
 
-# 2. apply migrations
+<h3>Every time you want to start it up</h3>
+<pre><code>docker compose up -d
 python -m alembic upgrade head
+uvicorn src.api.main:app --reload
+</code></pre>
+<p>That's it — <code>alembic upgrade head</code> is a no-op if migrations are already applied, and <strong>the API loads the already-trained models from disk at startup, it never retrains them.</strong> Then open <a href="/app/">/app/</a> for the test console, <a href="/api-reference">/api-reference</a> for interactive Swagger docs, or stay here at <a href="/docs">/docs</a>.</p>
 
-# 3. seed the default config (idempotent — safe to re-run)
+<h3>One-time setup (or whenever you deliberately want to reseed config / retrain)</h3>
+<p>Run this once after a fresh <code>git clone</code>, or any time you've wiped the <code>data/</code> directory (it's gitignored — trained models and generated data don't travel with the repo) or want to intentionally regenerate the models:</p>
+<pre><code># seed the default config — idempotent, safe to re-run any time, does NOT retrain anything
 python -m src.rules.seed_rules
 python -m src.scoring.seed_weighted_scoring
 python -m src.scoring.recalibration
 python -m src.pricing.seed_pricing
 
-# 4. train the two models (writes to data/models/)
+# train the two models — writes data/models/{individual,msme}/model.pkl
+# only needed once; the API loads these files, it doesn't call this itself
 python -m src.scoring.trainer
-
-# 5. run the API (also serves the frontend and this docs page)
-uvicorn src.api.main:app --reload
 </code></pre>
-<p>Then open <a href="/app/">/app/</a> for the test console, <a href="/api-reference">/api-reference</a> for interactive Swagger docs, or stay here at <a href="/docs">/docs</a>.</p>
+<div class="warn-box">
+  <strong>You do not need to retrain on every restart.</strong> Training writes <code>.pkl</code> files to <code>data/models/</code>; the API just reads them off disk each time it starts. Only re-run <code>src.scoring.trainer</code> if you've deleted that directory, regenerated the underlying applicant data, or actually want different model weights.
+</div>
 </section>
 
 <section id="ports">
