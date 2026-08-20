@@ -12,11 +12,15 @@ requirement) are served at /docs once running.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from src.api.dataset import build_dataset
 from src.api.routers import applications, exceptions, rules
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
 
 
 @asynccontextmanager
@@ -42,3 +46,11 @@ app.include_router(exceptions.router)
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+# Phase 9's basic frontend — same-origin static files, mounted last so it
+# never shadows the API routes above. Deliberately minimal (plain HTML/JS,
+# no build step, no framework) per this phase's own explicit scope: "basic
+# frontend for testing purposes, will improve later" — not a production UI.
+if FRONTEND_DIR.exists():
+    app.mount("/app", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

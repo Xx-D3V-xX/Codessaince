@@ -19,10 +19,23 @@ from sqlalchemy.orm import Session
 from src.api.deps import get_db
 from src.api.schemas import RuleResponse, RuleUpdateRequest
 from src.api.serializers import serialize_rule
-from src.db.models import ExceptionLevel, Rule, RuleOperator, RuleOutcome
-from src.rules.crud import edit_rule
+from src.db.models import ApplicantPipeline, ExceptionLevel, Rule, RuleOperator, RuleOutcome
+from src.rules.crud import active_rules_for_pipeline, edit_rule
 
 router = APIRouter(prefix="/rules", tags=["rules"])
+
+
+@router.get("", response_model=list[RuleResponse])
+def list_rules(pipeline: ApplicantPipeline, db: Session = Depends(get_db)) -> list[RuleResponse]:
+    """
+    active rules for one pipeline, ordered by priority — the "editable
+    threshold table, per applicant-type ruleset" Phase 9's admin console
+    needs. Not a TODO.md Phase 8 checklist bullet by name, but a small,
+    necessary extension: you can't build a table over an API that only
+    supports single-item lookup.
+    """
+    rules = active_rules_for_pipeline(db, pipeline)
+    return [serialize_rule(r) for r in sorted(rules, key=lambda r: r.priority)]
 
 
 @router.get("/{rule_code}", response_model=RuleResponse)

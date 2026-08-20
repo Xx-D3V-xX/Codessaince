@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CreditGate — internal test console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>CreditGate <span class="tag">internal test console</span></h1>
+  <p class="disclaimer">
+    Phase 9 — basic frontend for testing the API, not a production UI. Talks directly to this same server's
+    <code>/applications</code>, <code>/rules</code>, <code>/exceptions</code> endpoints.
+  </p>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="submit">Submit</button>
+  <button class="tab-btn" data-tab="decision">Decision</button>
+  <button class="tab-btn" data-tab="rules">Rules Admin</button>
+  <button class="tab-btn" data-tab="exceptions">Exception Queue</button>
+  <button class="tab-btn" data-tab="audit">Audit</button>
+</nav>
+
+<main>
+  <!-- SUBMIT -->
+  <section id="tab-submit" class="tab-panel active">
+    <h2>Submit Application</h2>
+    <form id="submit-form">
+      <label>Applicant ID <input type="text" id="submit-applicant-id" placeholder="e.g. APP000019" required></label>
+      <label>Requested loan amount (optional override) <input type="number" id="submit-loan-amount" step="0.01"></label>
+      <label>Requested tenure months (optional override) <input type="number" id="submit-tenure"></label>
+      <button type="submit">Submit</button>
+    </form>
+    <div id="submit-result" class="result-box"></div>
+  </section>
+
+  <!-- DECISION -->
+  <section id="tab-decision" class="tab-panel">
+    <h2>Decision</h2>
+    <div class="row">
+      <label>Application ID <input type="text" id="decision-app-id" placeholder="paste an application_id"></label>
+      <button id="decision-load-btn">Load</button>
+      <button id="decision-rerun-btn" disabled>Re-run (against current rules)</button>
+    </div>
+    <div id="decision-current"></div>
+    <div id="decision-comparison"></div>
+  </section>
+
+  <!-- RULES ADMIN -->
+  <section id="tab-rules" class="tab-panel">
+    <h2>Rules Admin</h2>
+    <div class="row">
+      <label>Pipeline
+        <select id="rules-pipeline">
+          <option value="INDIVIDUAL">INDIVIDUAL</option>
+          <option value="MSME">MSME</option>
+        </select>
+      </label>
+      <label>Edited by <input type="text" id="rules-edited-by" value="demo_admin"></label>
+      <button id="rules-load-btn">Load active rules</button>
+    </div>
+    <div id="rules-table"></div>
+  </section>
+
+  <!-- EXCEPTION QUEUE -->
+  <section id="tab-exceptions" class="tab-panel">
+    <h2>Exception Queue</h2>
+    <div class="row">
+      <label>Level
+        <select id="exc-level">
+          <option value="L1">L1</option>
+          <option value="L2">L2</option>
+          <option value="CREDIT_HEAD">CREDIT_HEAD</option>
+        </select>
+      </label>
+      <label>Acting as role
+        <select id="exc-role">
+          <option value="credit_ops_l1">credit_ops_l1</option>
+          <option value="credit_ops_l2">credit_ops_l2</option>
+          <option value="credit_head">credit_head</option>
+        </select>
+      </label>
+      <label>Resolved by <input type="text" id="exc-resolved-by" value="demo_reviewer"></label>
+      <button id="exc-load-btn">Load queue</button>
+    </div>
+    <div id="exc-table"></div>
+  </section>
+
+  <!-- AUDIT -->
+  <section id="tab-audit" class="tab-panel">
+    <h2>Audit Trail</h2>
+    <div class="row">
+      <label>Application ID <input type="text" id="audit-app-id" placeholder="paste an application_id"></label>
+      <button id="audit-load-btn">Load</button>
+    </div>
+    <div id="audit-table"></div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

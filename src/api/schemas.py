@@ -118,6 +118,20 @@ class RuleResponse(BaseModel):
     effective_to: datetime | None
 
 
+class ExceptionQueueEntry(BaseModel):
+    """one row in the exception queue view — enriched with just enough decision/application context for a reviewer to triage without a second request per row."""
+    id: UUID
+    level: str
+    status: str
+    assigned_to: str | None
+    application_id: UUID
+    applicant_id: str
+    decision_outcome: str
+    risk_grade: str | None
+    eligible_amount: float | None
+    created_at: datetime
+
+
 class ExceptionResolutionRequest(BaseModel):
     resolved_by: str
     notes: str | None = None

@@ -73,14 +73,14 @@ Sequenced by dependency, not by section number. Each phase should be genuinely w
 - [x] `GET /applications/{id}/audit` → full audit trail — aggregates `audit_log` across the application/decision/exception entity_types a single application's history spans
 - [x] Exception approval endpoints, role-gated — `POST /exceptions/{id}/approve|reject`, real authorization logic keyed off `X-User-Role` (see `src/api/deps.py` for the honest disclosure of what "role-gated" means without a real auth system)
 
-## Phase 9 — Frontend
+## Phase 9 — Frontend (basic version done — plain HTML/JS test console, not a production UI; explicitly scoped down per instruction to revisit later)
 
-- [ ] Application submission / intake form
-- [ ] Decision result view: rule-by-rule pass/fail, reason codes, final outcome, eligible amount/rate
-- [ ] Rules admin console: editable threshold table, per applicant-type ruleset
-- [ ] Exception queue (L1/L2/Credit Head views, role-gated)
-- [ ] Audit history view
-- [ ] Re-run flow UI: edit threshold → re-run → side-by-side decision comparison (**test this exact flow explicitly — it's the single highest-stakes demo moment**)
+- [x] Application submission / intake form — `frontend/index.html`'s Submit tab
+- [x] Decision result view: rule-by-rule pass/fail, reason codes, final outcome, eligible amount/rate — Decision tab, full `triggered_rules` table with a three-state condition badge (fired/clear/unknown)
+- [x] Rules admin console: editable threshold table, per applicant-type ruleset — Rules Admin tab; required a small, additive `GET /rules?pipeline=` list endpoint (not in Phase 8's original bullets — you can't build a table over single-item-lookup-only)
+- [x] Exception queue (L1/L2/Credit Head views, role-gated) — Exception Queue tab; required a small, additive `GET /exceptions?level=&status=` list endpoint, same reasoning
+- [x] Audit history view — Audit tab
+- [x] Re-run flow UI: edit threshold → re-run → side-by-side decision comparison (**tested this exact flow explicitly in a real browser** — edited `IND_MIN_BUREAU_SCORE` live via the admin console, returned to the Decision tab, re-ran, and confirmed the before/after comparison panel renders correctly)
 
 ## Phase 10 — Explicitly deferred / stretch (do not start before Phases 0–9 are solid)
 
