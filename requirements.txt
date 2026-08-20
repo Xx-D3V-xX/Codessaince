@@ -1,0 +1,7 @@
+numpy>=1.26
+pandas>=2.1
+polars>=1.0
+Faker>=25.0
+tqdm>=4.66
+rich>=13.7
+sdv>=1.15
