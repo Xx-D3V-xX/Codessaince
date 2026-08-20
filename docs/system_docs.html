@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CreditGate — System Documentation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #0f1115; --panel: #171a21; --border: #2a2e38; --text: #e6e8ec;
+  --muted: #9aa2b1; --accent: #5b8def; --ok: #3fbf6f; --bad: #e0555a; --warn: #d9a441;
+  --code-bg: #11141a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.55; }
+header { padding: 2rem 1.5rem 1rem; border-bottom: 1px solid var(--border); }
+h1 { margin: 0 0 0.25rem; font-size: 1.6rem; }
+.subtitle { color: var(--muted); margin: 0; }
+.badge-open { display: inline-block; background: rgba(63,191,111,0.15); color: var(--ok); padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem; }
+.layout { display: grid; grid-template-columns: 220px 1fr; gap: 2rem; max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+nav.toc { position: sticky; top: 1.5rem; align-self: start; font-size: 0.85rem; }
+nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 0.25rem 0; }
+nav.toc a:hover { color: var(--accent); }
+main { min-width: 0; }
+section { margin-bottom: 2.5rem; }
+h2 { font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; margin-top: 0; }
+h3 { font-size: 1.02rem; color: var(--text); margin-bottom: 0.4rem; }
+p { color: var(--text); }
+.muted { color: var(--muted); }
+code, .mono { font-family: "SF Mono", Consolas, monospace; background: var(--code-bg); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
+pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.9rem 1rem; overflow-x: auto; font-size: 0.82rem; }
+pre code { background: none; padding: 0; }
+table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.85rem; }
+th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+.method { font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.75rem; }
+.method.GET { background: rgba(91,141,239,0.18); color: var(--accent); }
+.method.POST { background: rgba(63,191,111,0.18); color: var(--ok); }
+.method.PATCH { background: rgba(217,164,65,0.18); color: var(--warn); }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin: 0.75rem 0; }
+.warn-box { background: rgba(217,164,65,0.08); border: 1px solid rgba(217,164,65,0.3); border-radius: 8px; padding: 0.9rem 1.1rem; margin: 0.75rem 0; }
+.warn-box strong { color: var(--warn); }
+ul, ol { padding-left: 1.3rem; }
+li { margin-bottom: 0.3rem; }
+a { color: var(--accent); }
+footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 2rem 1rem 3rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CreditGate <span class="badge-open">public · no login required</span></h1>
+  <p class="subtitle">Smart Credit Underwriting &amp; Configurable BRE for NBFC Domain — Codeissance PS-1 submission. This page documents everything built, how to run it, and how it was tested.</p>
+</header>
+
+<div class="layout">
+<nav class="toc">
+  <a href="#overview">Overview &amp; architecture</a>
+  <a href="#running">Running it locally</a>
+  <a href="#ports">Ports &amp; services</a>
+  <a href="#containers">Docker containers</a>
+  <a href="#credentials">Credentials</a>
+  <a href="#auth">Authentication / roles</a>
+  <a href="#api">API reference</a>
+  <a href="#frontend">Frontend</a>
+  <a href="#testing">Testing — what &amp; how</a>
+  <a href="#phases">Build history by phase</a>
+  <a href="#limitations">Known limitations</a>
+</nav>
+
+<main>
+
+<section id="overview">
+<h2>Overview &amp; architecture</h2>
+<p>CreditGate converts applicant financial data into a transparent credit decision. The core design decisions (from <code>CLAUDE.md</code>):</p>
+<ul>
+  <li><strong>Rules-first, ML-secondary</strong> — a configurable business rules engine (BRE) makes every final decision. An XGBoost model produces a risk signal the BRE can reference; it never decides on its own.</li>
+  <li><strong>Two pipelines</strong> — <span class="mono">INDIVIDUAL</span> (salaried/self-employed) and <span class="mono">MSME</span> (business-owner), each with its own ruleset and model.</li>
+  <li><strong>Everything versioned by insert, not update</strong> — rules, weighted-scoring config, recalibration offsets, and eligibility/pricing bands are never mutated in place. Editing inserts a new version row and closes out the old one, so a past decision's snapshot never changes underneath it.</li>
+  <li><strong>One shared audit log</strong> — every state-changing action across the whole system writes through one entity-agnostic <span class="mono">audit_log</span> table.</li>
+</ul>
+<p>Request flow: <span class="mono">Frontend → FastAPI → Rules engine (Phase 4) → Exception routing (Phase 6) → Eligibility/pricing (Phase 7) → Postgres</span>, with an XGBoost risk signal (Phase 5) feeding the pricing stage.</p>
+</section>
+
+<section id="running">
+<h2>Running it locally</h2>
+<pre><code># 1. start Postgres (docker-compose, isolated on port 5434)
+docker compose up -d
+
+# 2. apply migrations
+python -m alembic upgrade head
+
+# 3. seed the default config (idempotent — safe to re-run)
+python -m src.rules.seed_rules
+python -m src.scoring.seed_weighted_scoring
+python -m src.scoring.recalibration
+python -m src.pricing.seed_pricing
+
+# 4. train the two models (writes to data/models/)
+python -m src.scoring.trainer
+
+# 5. run the API (also serves the frontend and this docs page)
+uvicorn src.api.main:app --reload
+</code></pre>
+<p>Then open <a href="/app/">/app/</a> for the test console, <a href="/api-reference">/api-reference</a> for interactive Swagger docs, or stay here at <a href="/docs">/docs</a>.</p>
+</section>
+
+<section id="ports">
+<h2>Ports &amp; services</h2>
+<table>
+<thead><tr><th>Service</th><th>Port</th><th>How it's started</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>FastAPI (API + frontend + this page)</td><td class="mono">8000</td><td><span class="mono">uvicorn src.api.main:app</span></td><td>Default uvicorn port; change with <span class="mono">--port</span></td></tr>
+<tr><td>Postgres (creditgate-postgres)</td><td class="mono">5434 → 5432</td><td><span class="mono">docker compose up -d</span></td><td>Host port 5434 deliberately, not 5432/5433 — kept isolated from any other local Postgres stack</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="containers">
+<h2>Docker containers &amp; services</h2>
+<p>One container, defined in <code>docker-compose.yml</code> at the repo root:</p>
+<table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Container name</td><td class="mono">creditgate-postgres</td></tr>
+<tr><td>Image</td><td class="mono">postgres:16-alpine</td></tr>
+<tr><td>Port mapping</td><td class="mono">5434:5432</td></tr>
+<tr><td>Volume</td><td class="mono">creditgate_pgdata</td> (named volume, persists across restarts)</tr>
+<tr><td>Healthcheck</td><td class="mono">pg_isready -U creditgate -d creditgate</td>, every 5s</tr>
+</tbody>
+</table>
+<p class="muted">No other containers are part of this project. The API and frontend run as a plain local process (uvicorn), not containerized, for this MVP.</p>
+</section>
+
+<section id="credentials">
+<h2>Credentials</h2>
+<div class="warn-box">
+  <strong>Honest disclosure:</strong> this project has no user login system anywhere. There is no username/password to sign into anything the way you'd sign into a real app. The only credential that exists is the local development database below, and the only thing resembling "authorization" is the demo-grade role header described in the next section.
+</div>
+<h3>Local Postgres (development only)</h3>
+<table>
+<tbody>
+<tr><td>Host</td><td class="mono">localhost</td></tr>
+<tr><td>Port</td><td class="mono">5434</td></tr>
+<tr><td>Database</td><td class="mono">creditgate</td></tr>
+<tr><td>User</td><td class="mono">creditgate</td></tr>
+<tr><td>Password</td><td class="mono">creditgate</td></tr>
+<tr><td>Full URL</td><td class="mono">postgresql+psycopg2://creditgate:creditgate@localhost:5434/creditgate</td></tr>
+</tbody>
+</table>
+<p class="muted">These are trivial, checked-into-source-control local dev defaults for a container only reachable on <span class="mono">localhost</span> — see <code>docker-compose.yml</code> and <code>.env.example</code>. They are not a production secret and are not meant to protect anything; a real deployment would never reuse them.</p>
+</section>
+
+<section id="auth">
+<h2>Authentication / authorization</h2>
+<p>Every endpoint below is open — no login, no API key, no session. The exception approve/reject endpoints have one piece of real, testable <em>authorization logic</em> (not authentication): they require an <code>X-User-Role</code> header matching the exception's level.</p>
+<table>
+<thead><tr><th>Header value</th><th>Can resolve</th></tr></thead>
+<tbody>
+<tr><td class="mono">credit_ops_l1</td><td>L1 exceptions</td></tr>
+<tr><td class="mono">credit_ops_l2</td><td>L2 exceptions</td></tr>
+<tr><td class="mono">credit_head</td><td>Any level (L1, L2, CREDIT_HEAD)</td></tr>
+</tbody>
+</table>
+<p class="muted">Anyone can set this header to anything — there is no verification that the caller actually holds that role. See <code>src/api/deps.py</code> for the same disclosure in code. A real deployment would sit this behind a proper identity provider.</p>
+</section>
+
+<section id="api">
+<h2>API reference</h2>
+<p>Full interactive/OpenAPI docs (try-it-out, request/response schemas) are at <a href="/api-reference">/api-reference</a>. Summary below.</p>
+
+<h3>Health</h3>
+<table>
+<tbody>
+<tr><td><span class="method GET">GET</span></td><td class="mono">/health</td><td>Liveness check — <span class="mono">{"status": "ok"}</span></td></tr>
+</tbody>
+</table>
+
+<h3>Applications</h3>
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><span class="method POST">POST</span></td><td class="mono">/applications</td><td>Submit an application for an already-ingested <span class="mono">applicant_id</span> (optionally overriding loan amount/tenure). Async saga: returns <span class="mono">202</span> + <span class="mono">application_id</span> immediately; evaluation runs in a background task.</td></tr>
+<tr><td><span class="method GET">GET</span></td><td class="mono">/applications/{id}/decision</td><td>Poll for the result — outcome, risk grade, eligible amount, interest rate, full rule-by-rule trace, and any associated exception.</td></tr>
+<tr><td><span class="method POST">POST</span></td><td class="mono">/applications/{id}/rerun</td><td>Re-evaluate the stored application against whatever rules are active <em>now</em> — the live-threshold-edit demo flow.</td></tr>
+<tr><td><span class="method GET">GET</span></td><td class="mono">/applications/{id}/audit</td><td>Full chronological audit trail for the application, its decisions, and its exceptions.</td></tr>
+</tbody>
+</table>
+
+<h3>Rules</h3>
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><span class="method GET">GET</span></td><td class="mono">/rules?pipeline=INDIVIDUAL|MSME</td><td>List active rules for one pipeline, ordered by priority.</td></tr>
+<tr><td><span class="method GET">GET</span></td><td class="mono">/rules/{rule_code}</td><td>Latest version of one rule.</td></tr>
+<tr><td><span class="method PATCH">PATCH</span></td><td class="mono">/rules/{rule_code}</td><td>Live threshold/field edit — inserts a new version, never mutates the old one.</td></tr>
+</tbody>
+</table>
+
+<h3>Exceptions</h3>
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><span class="method GET">GET</span></td><td class="mono">/exceptions?level=L1|L2|CREDIT_HEAD&amp;status=PENDING</td><td>The exception queue for one level.</td></tr>
+<tr><td><span class="method POST">POST</span></td><td class="mono">/exceptions/{id}/approve</td><td>Role-gated. Re-fires the underlying decision and re-prices it.</td></tr>
+<tr><td><span class="method POST">POST</span></td><td class="mono">/exceptions/{id}/reject</td><td>Role-gated. Same re-fire/re-price behavior.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="frontend">
+<h2>Frontend</h2>
+<p>A basic internal test console at <a href="/app/">/app/</a> — plain HTML/CSS/vanilla JS, no framework, no build step, served same-origin (no CORS needed). Explicitly scoped as basic/testing-only; a design pass is expected later. Five tabs: Submit, Decision, Rules Admin, Exception Queue, Audit — each a thin UI over the API above.</p>
+</section>
+
+<section id="testing">
+<h2>Testing — what was tested and how</h2>
+<p><strong>Every test in this project runs against a real, live Postgres instance and real generated applicant data</strong> — never mocks, never fabricated dicts. Each script prints its own assertions and exits non-zero on failure.</p>
+<table>
+<thead><tr><th>File</th><th>Covers</th><th>Method</th></tr></thead>
+<tbody>
+<tr><td class="mono">test_rules_engine.py</td><td>Rule evaluation, rule_group AND-semantics, conflict resolution, live threshold edit + re-run (PS-1 demo scenario 5)</td><td>Runs the full Phase 0-2 pipeline on all 8,000 generated applicants, evaluates every one through the seeded policy, then finds a real applicant, edits a rule live, re-runs, and confirms both decision versions are independently queryable from a fresh DB session.</td></tr>
+<tr><td class="mono">test_scoring_pipeline.py</td><td>Trained model predictions, SHAP explainability, recalibration, weighted-scoring composite</td><td>Loads both real trained models against real applicants; checks SHAP's decomposition exactly reconstructs <span class="mono">predict_proba()</span>'s output; flips a real probability across a risk-grade boundary via a persisted DB offset; confirms a live weight edit changes the composite signal with no retraining.</td></tr>
+<tr><td class="mono">test_exception_workflow.py</td><td>Exception routing (including count-based escalation to CREDIT_HEAD), resolution, honest audit trail</td><td>Finds a real plain-L1 case and a real escalated case; approves one via the snapshot-only re-fire path; confirms the original decision's outcome is never retroactively relabeled.</td></tr>
+<tr><td class="mono">test_pricing_pipeline.py</td><td>Risk grade computation, eligibility/pricing lookups, live config edits</td><td>Hand-computes an expected eligible amount independently and checks it matches the persisted value exactly; confirms HARD_REJECT decisions get nothing priced; edits a multiplier live and confirms the change.</td></tr>
+<tr><td class="mono">test_api.py</td><td>Every HTTP endpoint — submit/poll, PATCH, rerun, audit, role-gated approval</td><td>Real HTTP requests via FastAPI's TestClient (in-process ASGI) against the live API, DB, and models — not a mocked client.</td></tr>
+</tbody>
+</table>
+<p>The frontend itself (Phase 9) was verified by actually driving it in a real browser session — submit → decision → live rule edit → re-run → side-by-side comparison → exception queue → approve → audit — which is how two real bugs (an XSS gap and a header-merging bug that broke the exception-approval requests) were found and fixed; no automated script exercised the frontend's JS.</p>
+</section>
+
+<section id="phases">
+<h2>Build history, by phase</h2>
+<p>Full detail lives in <code>PROGRESS.md</code> and <code>TODO.md</code> in the repo. Summary:</p>
+<ol>
+<li><strong>Phase 0</strong> — synthetic applicant data generator (CopulaGAN), 8,000 applicants across master/bureau/bank/ITR/assets/alt-data/GST sources.</li>
+<li><strong>Phase 1</strong> — ingestion/adapter layer, Pydantic-validated per row.</li>
+<li><strong>Phase 2</strong> — cross-source derived features (obligation/income discrepancy, asset coverage).</li>
+<li><strong>Phase 3</strong> — Postgres schema (8 tables), Alembic migrations, versioned config pattern.</li>
+<li><strong>Phase 4</strong> — the rules engine: evaluation, AND-semantics, conflict resolution, rule CRUD.</li>
+<li><strong>Phase 5</strong> — weighted-scoring layer, two XGBoost models, disclosed proxy labels, SHAP, recalibration.</li>
+<li><strong>Phase 6</strong> — exception routing/resolution, honest (never-relabeled) audit trail.</li>
+<li><strong>Phase 7</strong> — eligibility &amp; pricing, risk grade computed separately from the BRE outcome.</li>
+<li><strong>Phase 8</strong> — this API layer (async saga, live rule edits, rerun, audit, role-gated exceptions).</li>
+<li><strong>Phase 9</strong> — this basic frontend and this documentation page.</li>
+</ol>
+</section>
+
+<section id="limitations">
+<h2>Known limitations (disclosed, not hidden)</h2>
+<ul>
+<li><strong>No real authentication.</strong> See "Authentication / authorization" above.</li>
+<li><strong>In-memory dataset preload.</strong> The API loads all 8,000 applicants into memory once at startup (~1 minute) rather than serving per-request from a feature store — a deliberate MVP simplification, documented in <code>src/api/dataset.py</code>.</li>
+<li><strong>ML training labels are a disclosed synthetic proxy.</strong> No real repayment/default outcome exists in this dataset (inherent to any synthetic-policy demo). <code>src/scoring/proxy_labels.py</code> documents this explicitly — the BRE remains the sole real decision-maker regardless of model output.</li>
+<li><strong>Frontend is intentionally basic.</strong> Functional, not polished — a design pass is expected later per explicit project scope.</li>
+</ul>
+</section>
+
+</main>
+</div>
+
+<footer>CreditGate — Codeissance PS-1 submission. This page is served by the same FastAPI app it documents (<code>src/api/main.py</code>) from <code>docs/system_docs.html</code>.</footer>
+
+</body>
+</html>

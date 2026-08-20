@@ -4,9 +4,11 @@ main.py (src/api/) — FastAPI application entry point for Phase 8.
 Run locally with:
     uvicorn src.api.main:app --reload
 
-Interactive API docs (auto-generated from src/api/schemas.py's Pydantic
-models — PS-1's own "clear APIs/data contracts between major components"
-requirement) are served at /docs once running.
+/docs is a public, no-login system documentation page (docs/system_docs.html)
+— ports, containers, credentials, every endpoint, what was tested and how.
+FastAPI's own auto-generated interactive/OpenAPI docs are moved to
+/api-reference to make room for it (see docs_url below) — they still exist,
+just not at the path a human docs page would more usefully occupy.
 """
 
 from __future__ import annotations
@@ -15,12 +17,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.dataset import build_dataset
 from src.api.routers import applications, exceptions, rules
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+DOCS_DIR = Path(__file__).resolve().parent.parent.parent / "docs"
 
 
 @asynccontextmanager
@@ -36,6 +40,8 @@ app = FastAPI(
     description="Smart Credit Underwriting & Configurable BRE for NBFC Domain — PS-1 submission",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url="/api-reference",
+    redoc_url="/api-reference/redoc",
 )
 
 app.include_router(applications.router)
@@ -46,6 +52,19 @@ app.include_router(exceptions.router)
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/docs", response_class=HTMLResponse, include_in_schema=False)
+def system_docs() -> HTMLResponse:
+    """
+    public, no-login system documentation — everything built, every port
+    and service, the docker container, local dev credentials, every API
+    endpoint, and what was tested and how. Static content in
+    docs/system_docs.html, served here rather than mounted as a StaticFiles
+    directory so it can live at exactly /docs (a StaticFiles mount can't
+    serve a single file at a non-directory path this cleanly).
+    """
+    return HTMLResponse((DOCS_DIR / "system_docs.html").read_text(encoding="utf-8"))
 
 
 # Phase 9's basic frontend — same-origin static files, mounted last so it
