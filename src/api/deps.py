@@ -28,11 +28,14 @@ from src.db.session import SessionLocal
 
 # mirrors src/rules/exceptions.py's QUEUE_BY_LEVEL — CREDIT_HEAD can act on
 # any level (it's the top of the escalation chain), a level-specific role
-# can only act on its own level.
+# can only act on its own level. "admin" is an additional top-of-chain
+# role alongside credit_head (not present in QUEUE_BY_LEVEL itself, which
+# only names credit_head as the CREDIT_HEAD queue's assignee) — it can act
+# on any level with the same authority as credit_head.
 _ROLES_ALLOWED_FOR_LEVEL: dict[ExceptionLevel, set[str]] = {
-    ExceptionLevel.L1: {"credit_ops_l1", "credit_head"},
-    ExceptionLevel.L2: {"credit_ops_l2", "credit_head"},
-    ExceptionLevel.CREDIT_HEAD: {"credit_head"},
+    ExceptionLevel.L1: {"credit_ops_l1", "credit_head", "admin"},
+    ExceptionLevel.L2: {"credit_ops_l2", "credit_head", "admin"},
+    ExceptionLevel.CREDIT_HEAD: {"credit_head", "admin"},
 }
 
 

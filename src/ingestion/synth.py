@@ -59,7 +59,7 @@ logger = logging.getLogger("creditgate.synth")
 # field, and re-attaching fresh Faker identifiers after sampling keeps every
 # row unique and well-formed (same reasoning as the old generator).
 _IDENTIFIER_COLS = [
-    "applicant_id", "name", "pan", "city", "date_of_birth", "account_opening_date",
+    "applicant_id", "name", "full_name", "email", "pan", "city", "date_of_birth", "account_opening_date",
 ]
 
 _CATEGORICAL_COLS = [
@@ -196,9 +196,12 @@ def build_seed_rows(fake: Faker, n_rows: int) -> list[dict]:
         total_income_yr1 = round(gross_total_income_yr1 * iv_ratio, 2)
         itr_type = random.choice(ITR_TYPE_BY_APPLICANT[applicant_type])
 
+        name = fake.name()
         row: dict = {
             "applicant_id": f"APP{i:06d}",
-            "name": fake.name(),
+            "name": name,
+            "full_name": name,
+            "email": fake.free_email(),
             "pan": fake.bothify(text="?????####?").upper(),
             "city": fake.city(),
             "date_of_birth": random_dob(age),
@@ -326,7 +329,10 @@ def build_profiles_copulagan(fake: Faker, n_profiles: int, n_seed_rows: int) -> 
         age = int(clip(float(d.get("age", 30)), 18, 75))
         d["age"] = age
         d["applicant_id"] = f"APP{idx:06d}"
-        d["name"] = fake.name()
+        name = fake.name()
+        d["name"] = name
+        d["full_name"] = name
+        d["email"] = fake.free_email()
         d["pan"] = fake.bothify(text="?????####?").upper()
         d["city"] = fake.city()
         d["date_of_birth"] = random_dob(age)

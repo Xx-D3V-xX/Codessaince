@@ -507,6 +507,7 @@ def build_seed_profiles(fake: Faker, n_rows: int = N_SEED_ROWS) -> list[dict]:
             # identity / master
             "applicant_id": f"APP{i:06d}",
             "name": fake.name(),
+            "email": fake.email(),
             "pan": fake.bothify(text="?????####?").upper(),
             "date_of_birth": _random_dob(age).isoformat(),
             "age": age,

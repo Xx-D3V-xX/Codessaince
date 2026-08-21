@@ -171,4 +171,28 @@ with TestClient(app) as client:
     print(f"L1 role approving its own L1 exception: {resp.status_code}, exception status={result['exception']['status']}")
     print("assert: role-gating correctly rejects the wrong role and accepts the right one -- PASS")
 
+    # -------------------------------------------------------------------
+    # 6b: "admin" role has credit_head-equivalent authority at every level
+    # -------------------------------------------------------------------
+    print("\n=== 6b: admin role authorized at all three exception levels ===")
+    from fastapi import HTTPException
+
+    from src.api.deps import require_role_for_level
+    from src.db.models import ExceptionLevel
+
+    for level in (ExceptionLevel.L1, ExceptionLevel.L2, ExceptionLevel.CREDIT_HEAD):
+        require_role_for_level(level, "admin")  # must not raise
+        print(f"admin authorized for {level.value} -- PASS")
+
+    # unrelated/invalid role strings are still rejected at every level, unchanged
+    for level in (ExceptionLevel.L1, ExceptionLevel.L2, ExceptionLevel.CREDIT_HEAD):
+        for bad_role in ("not_a_real_role", None):
+            try:
+                require_role_for_level(level, bad_role)
+                raise AssertionError(f"expected role {bad_role!r} to be rejected for {level.value}")
+            except HTTPException as e:
+                assert e.status_code == 403
+        print(f"invalid/unrelated roles still rejected for {level.value} -- PASS")
+    print("assert: admin has credit_head-equivalent authority at every exception level, existing 403 behavior unchanged -- PASS")
+
 print("\nALL PHASE 8 ASSERTIONS PASSED")

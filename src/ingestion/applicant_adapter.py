@@ -38,6 +38,8 @@ class NormalizedApplicantProfile(BaseModel):
     """
 
     applicant_id: str
+    full_name: str | None = None
+    email: str | None = None
     age: int | None = None
     applicant_type: str | None = None
     employment_type: str | None = None

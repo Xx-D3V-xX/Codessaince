@@ -71,6 +71,8 @@ class ApplicantSummary(BaseModel):
     """one row in the paginated list -- enough to browse/search by, not the full profile (that's the detail/preview endpoint)."""
 
     applicant_id: str
+    full_name: str | None
+    email: str | None
     applicant_type: str | None
     age: int | None
     declared_income_monthly: float | None
@@ -115,7 +117,9 @@ def list_applicants(
     summaries = [
         ApplicantSummary(
             applicant_id=aid,
-            applicant_type=(m := dataset.master_by_id[aid]).get("applicant_type"),
+            full_name=(m := dataset.master_by_id[aid]).get("full_name"),
+            email=m.get("email"),
+            applicant_type=m.get("applicant_type"),
             age=m.get("age"),
             declared_income_monthly=m.get("declared_income_monthly"),
             requested_loan_amount=m.get("requested_loan_amount"),

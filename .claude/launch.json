@@ -17,17 +17,14 @@
     },
     {
       "name": "creditgate-frontend",
-      "runtimeExecutable": "python",
+      "runtimeExecutable": "npm",
       "runtimeArgs": [
-        "-m",
-        "http.server",
-        "5500",
-        "--directory",
-        "frontend",
-        "--bind",
-        "127.0.0.1"
+        "run",
+        "dev",
+        "--prefix",
+        "creditgate-frontend"
       ],
-      "port": 5500
+      "port": 3000
     }
   ]
 }
